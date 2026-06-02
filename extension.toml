@@ -1,0 +1,23 @@
+id = "solidity-nomic"
+name = "Solidity (Nomic)"
+version = "0.1.0"
+schema_version = 1
+description = "Solidity for Zed powered by the Nomic Foundation language server, with richer built-in highlighting."
+repository = "https://github.com/poanlin/zed-solidity-nomic"
+authors = ["boolafish"]
+languages = ["languages/solidity", "languages/yul"]
+
+[grammars.solidity]
+repository = "https://github.com/JoranHonig/tree-sitter-solidity"
+rev = "4e938a46c7030dd001bc99e1ac0f0c750ac98254"
+
+[grammars.yul]
+repository = "https://github.com/czepluch/tree-sitter-yul"
+rev = "bc7a44058521b8689375416f9e23f842df8abb55"
+
+[language_servers.nomic-solidity]
+name = "Nomic Solidity"
+languages = ["Solidity"]
+
+[language_servers.nomic-solidity.language_ids]
+Solidity = "solidity"

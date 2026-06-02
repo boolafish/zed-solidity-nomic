@@ -1,0 +1,15 @@
+[package]
+name = "zed_solidity_nomic"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "Zed extension for Solidity powered by the Nomic Foundation language server"
+repository = "https://github.com/poanlin/zed-solidity-nomic"
+exclude = ["target/", "extension.wasm", "grammars/", "Cargo.toml.orig"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.7.0"
