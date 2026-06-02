@@ -3,7 +3,7 @@ name = "Solidity (Nomic)"
 version = "0.1.0"
 schema_version = 1
 description = "Solidity for Zed powered by the Nomic Foundation language server, with richer built-in highlighting."
-repository = "https://github.com/poanlin/zed-solidity-nomic"
+repository = "https://github.com/boolafish/zed-solidity-nomic"
 authors = ["boolafish"]
 languages = ["languages/solidity", "languages/yul"]
 

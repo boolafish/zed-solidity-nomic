@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 license = "MIT"
 description = "Zed extension for Solidity powered by the Nomic Foundation language server"
-repository = "https://github.com/poanlin/zed-solidity-nomic"
+repository = "https://github.com/boolafish/zed-solidity-nomic"
 exclude = ["target/", "extension.wasm", "grammars/", "Cargo.toml.orig"]
 
 [lib]
