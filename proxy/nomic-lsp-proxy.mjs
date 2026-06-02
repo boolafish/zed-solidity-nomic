@@ -271,9 +271,10 @@ server.stdout.on("data", createReader((message) => {
   }
 
   if (
-    message.method === "custom/validation-job-status" &&
-    message.params?.validationRun === false &&
-    message.params?.reason === "Couldn't load the project config file. Please make sure the config file is valid."
+    message.method === "custom/file-indexed" ||
+    message.method === "custom/analyzed" ||
+    message.method === "custom/validated" ||
+    message.method === "custom/validation-job-status"
   ) {
     return;
   }
