@@ -220,6 +220,24 @@ function shouldFallback(result) {
 }
 
 process.stdin.on("data", createReader((message) => {
+  if (message.method === "initialize" && message.params) {
+    writeClient({
+      jsonrpc: "2.0",
+      id: message.id,
+      result: {
+        capabilities: {
+          definitionProvider: true,
+          textDocumentSync: 1,
+        },
+      },
+    });
+    return;
+  }
+
+  if (message.method === "initialized") {
+    return;
+  }
+
   if (message.method === "textDocument/didOpen") {
     documents.set(message.params.textDocument.uri, message.params.textDocument.text);
   } else if (message.method === "textDocument/didChange") {
@@ -231,24 +249,30 @@ process.stdin.on("data", createReader((message) => {
   }
 
   if (message.id != null && message.method === "textDocument/definition") {
-    const serverId = nextServerId++;
-    clientRequests.set(serverId, {
-      clientId: message.id,
-      method: message.method,
-      params: message.params,
+    writeClient({
+      jsonrpc: "2.0",
+      id: message.id,
+      result: fallbackDefinition(message.params),
     });
-    writeServer({ ...message, id: serverId });
     return;
   }
 
-  if (message.id != null && !message.method && serverRequests.has(message.id)) {
-    const serverId = serverRequests.get(message.id);
-    serverRequests.delete(message.id);
-    writeServer({ ...message, id: serverId });
+  if (message.id != null && message.method === "shutdown") {
+    writeClient({ jsonrpc: "2.0", id: message.id, result: null });
     return;
   }
 
-  writeServer(message);
+  if (message.method === "exit") {
+    server.kill();
+    process.exit(0);
+  }
+
+  if (message.id != null) {
+    writeClient({ jsonrpc: "2.0", id: message.id, result: null });
+    return;
+  }
+
+  return;
 }));
 
 server.stdout.on("data", createReader((message) => {
@@ -274,6 +298,7 @@ server.stdout.on("data", createReader((message) => {
     message.method === "custom/file-indexed" ||
     message.method === "custom/analyzed" ||
     message.method === "custom/validated" ||
+    message.method === "custom/worker-initialized" ||
     message.method === "custom/validation-job-status"
   ) {
     return;
@@ -290,6 +315,6 @@ server.stdout.on("data", createReader((message) => {
   writeClient(message);
 }));
 
-server.on("exit", (code) => {
-  process.exit(code ?? 0);
+server.on("exit", () => {
+  // Keep the local definition server alive even if the upstream server exits.
 });
