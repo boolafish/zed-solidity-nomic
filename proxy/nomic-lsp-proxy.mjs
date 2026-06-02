@@ -115,42 +115,48 @@ function resolveImport(fromFile, importPath) {
   }
 }
 
-function declarationRange(text, symbol) {
-  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-  const declaration = new RegExp(
-    `\\b(?:abstract\\s+contract|contract|interface|library|struct|enum|error|event|modifier|function)\\s+(${escaped})\\b`,
-    "u",
-  );
+function declarationRanges(text) {
+  const declaration =
+    /\b(?:abstract\s+contract|contract|interface|library|struct|enum|error|event|modifier|function)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/gu;
+  const ranges = new Map();
   const lines = text.split(/\r?\n/u);
   for (let line = 0; line < lines.length; line++) {
-    const match = lines[line].match(declaration);
-    if (!match || match.index === undefined) continue;
-    const character = match.index + match[0].lastIndexOf(symbol);
-    return {
-      start: { line, character },
-      end: { line, character: character + symbol.length },
-    };
+    for (const match of lines[line].matchAll(declaration)) {
+      const symbol = match[1];
+      const character = match.index + match[0].lastIndexOf(symbol);
+      if (!ranges.has(symbol)) ranges.set(symbol, []);
+      ranges.get(symbol).push({
+        start: { line, character },
+        end: { line, character: character + symbol.length },
+      });
+    }
   }
-  return null;
+  return ranges;
 }
 
-function importedFiles(fromFile, text, maxDepth = 3) {
-  const result = [];
+function declarationRange(text, symbol) {
+  return declarationRanges(text).get(symbol)?.[0] ?? null;
+}
+
+function reachableImportIndex(fromFile, text) {
+  const files = [];
   const seen = new Set([fromFile]);
   const queue = [{ file: fromFile, text, depth: 0 }];
 
   while (queue.length) {
     const current = queue.shift();
-    if (current.depth >= maxDepth) continue;
 
     for (const importDecl of parseImports(current.text)) {
       const targetFile = resolveImport(current.file, importDecl.path);
       if (!targetFile || seen.has(targetFile) || !fs.existsSync(targetFile)) continue;
 
       seen.add(targetFile);
-      result.push(targetFile);
-
       const targetText = fs.readFileSync(targetFile, "utf8");
+      files.push({
+        file: targetFile,
+        distance: current.depth + 1,
+        declarations: declarationRanges(targetText),
+      });
       queue.push({
         file: targetFile,
         text: targetText,
@@ -159,7 +165,7 @@ function importedFiles(fromFile, text, maxDepth = 3) {
     }
   }
 
-  return result;
+  return files;
 }
 
 function fallbackDefinition(params) {
@@ -188,10 +194,20 @@ function fallbackDefinition(params) {
     return { uri: pathToUri(targetFile), range };
   }
 
-  for (const targetFile of importedFiles(fromFile, text)) {
-    const targetText = fs.readFileSync(targetFile, "utf8");
-    const range = declarationRange(targetText, localSymbol);
-    if (range) return { uri: pathToUri(targetFile), range };
+  const candidates = [];
+  for (const entry of reachableImportIndex(fromFile, text)) {
+    for (const range of entry.declarations.get(localSymbol) ?? []) {
+      candidates.push({ file: entry.file, distance: entry.distance, range });
+    }
+  }
+
+  candidates.sort((left, right) =>
+    left.distance - right.distance || left.file.length - right.file.length || left.file.localeCompare(right.file)
+  );
+
+  if (candidates.length) {
+    const best = candidates[0];
+    return { uri: pathToUri(best.file), range: best.range };
   }
 
   return null;
